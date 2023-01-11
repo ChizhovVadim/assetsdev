@@ -30,4 +30,4 @@ def ArsageraRate(payments: list[Payment]):
     return rate, annualRate
 
 def yearsBetween(minDate, maxDate):
-    return (maxDate-minDate).days/356.25
+    return (maxDate-minDate).days/365.25
