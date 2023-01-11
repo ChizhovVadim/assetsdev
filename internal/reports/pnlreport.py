@@ -55,8 +55,9 @@ def buildPnLReport(securityInfo, myTrades, myDividends, candleStorage,
             balanceItems[t.SecurityCode].VolumeStart += t.Volume
             continue
 
-        totalCommission += t.ExchangeComission + t.BrokerComission
-        amount = t.Volume*t.Price
+        commission = t.ExchangeComission + t.BrokerComission
+        totalCommission += commission
+        amount = t.Volume*t.Price+commission
         totalAddition += amount
         payments.append(xirr.Payment(t.ExecutionDate, -amount))
     
@@ -71,8 +72,8 @@ def buildPnLReport(securityInfo, myTrades, myDividends, candleStorage,
     payments.append(xirr.Payment(startDate, -amountStart))
     payments.append(xirr.Payment(finishDate, amountFinish))
 
-    amountChange = amountFinish - amountStart - totalAddition
-    PnL = amountChange + totalDividends - totalCommission
+    PnL = amountFinish-amountStart+totalDividends-totalAddition
+
     arsageraRate, arsageraAnnualRate = xirr.ArsageraRate(payments)
 
     benchmarkTicker = "MICEXINDEXCF"
@@ -82,7 +83,6 @@ def buildPnLReport(securityInfo, myTrades, myDividends, candleStorage,
     print(f"СЧА на начало периода {amountStart:,.0f}")
     print(f"СЧА на конец периода {amountFinish:,.0f}")
     print(f"Инвестировано новых средств {totalAddition:,.0f}")
-    print(f"Изменение рыночной стоимости {amountChange:,.0f}")
     print(f"Дивиденды {totalDividends:,.0f}")
     print(f"Комиссия {totalCommission:,.0f}")
     print(f"Прибыль {PnL:,.0f}")
