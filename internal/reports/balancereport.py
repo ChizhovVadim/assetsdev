@@ -41,6 +41,6 @@ def buildBalanceReport(myTrades, candleStorage, securityInfo, account, date):
 def printReport(report: BalanceReport):
     print(f"Балансовый отчет '{report.account}' на дату {report.date:%Y-%m-%d}")
     print(f"СЧА {report.totalAmount:,.0f}")
+
     for entry in report.items:
         print(f"{entry.securityCode:<12} {entry.price:>10} {entry.volume:>10,} {entry.amount:>10,.0f} {entry.weight*100:>4,.1f}")    
-    return

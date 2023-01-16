@@ -7,18 +7,6 @@ class BalanceEntry:
     VolumeStart: int
     VolumeFinish: int
 
-@dataclass
-class PnLItem:
-    Title: str
-    StartDate: datetime.datetime
-    FinishDate: datetime.datetime
-    Account: str
-    Dividends: float
-    Comissions: float
-    Irr: float
-    ArsageraRate: float
-    Benchmark: float
-
 def buildPnLReport(securityInfo, myTrades, myDividends, candleStorage,
     account, startDate, finishDate):
     today = datetime.datetime.today()
@@ -74,7 +62,7 @@ def buildPnLReport(securityInfo, myTrades, myDividends, candleStorage,
 
     PnL = amountFinish-amountStart+totalDividends-totalAddition
 
-    arsageraRate, arsageraAnnualRate = xirr.ArsageraRate(payments)
+    arsageraRate, arsageraAnnualRate = xirr.arsageraRate(payments)
 
     benchmarkTicker = "MICEXINDEXCF"
     benchmarkRate = candleStorage.candleByDate(benchmarkTicker, finishDate).C/candleStorage.candleByDate(benchmarkTicker, startDate).C
