@@ -36,6 +36,7 @@ class CandleStorage:
                 yield self.parseCandle(row)
 
     # Дописываем свечи в конец файла
+    # TODO Если файл новый, то добавлять заголовок?
     def update(self, securityCode: str, candles: list[Candle]):
         path = self.fileName(securityCode)
         with open(path, 'a') as csvfile:

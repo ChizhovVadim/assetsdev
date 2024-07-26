@@ -7,45 +7,43 @@ import logging
 
 from .domaintypes import Candle, Timeframe
 
-class MfdProvider:
-    def __init__(self, secCodes: dict[str, str], timeFrame: Timeframe):
-        self._secCodes = secCodes
-        tfCode = timeFrameCode(timeFrame)
+def load(securityName: str,
+              beginDate: datetime.datetime,
+              endDate: datetime.datetime,
+              secCodes: dict[str, str],
+              timeFrame: Timeframe) -> list[Candle]:
+        
+        tfCode = _timeFrameCode(timeFrame)
         if tfCode is None:
             raise ValueError("timeframe code nod found", timeFrame)
-        self._tfCode = tfCode
-
-    def load(self, securityName: str,
-              beginDate: datetime.datetime, endDate: datetime.datetime) -> list[Candle]:
         
-        secCode = self._secCodes.get(securityName)
+        secCode = secCodes.get(securityName)
         if not secCode:
             raise ValueError("security code nod found", securityName)
         
-        url = buildUrl(secCode, self._tfCode, beginDate, endDate)
+        url = _buildUrl(secCode, tfCode, beginDate, endDate)
         logging.debug(f"download {securityName} from {url}")
-        return download(url)
-        
+        return _download(url)        
 
-def download(url: str)-> list[Candle]:
+def _download(url: str)-> list[Candle]:
     CHARSET = "cp1251"
     TRUSTED_USER_AGENT = "Mozilla/5.0"
 
     request = urllib.request.Request(
         url, None, {"User-Agent": TRUSTED_USER_AGENT}
     )
-    response = urllib.request.urlopen(request)
+    response = urllib.request.urlopen(request, timeout=30)
     # print(response.status)
     data = response.read().decode(CHARSET).splitlines()
     cr = csv.reader(data)
     next(cr)  # skip header
     result = []
     for row in cr:
-        item = parseCandle(row)
+        item = _parseCandle(row)
         result.append(item)
     return result
 
-def parseCandle(row):
+def _parseCandle(row):
     dt = datetime.datetime.strptime(row[2], "%Y%m%d")
     t = int(row[3])
 
@@ -60,8 +58,7 @@ def parseCandle(row):
     v = float(row[8])
     return Candle(dt, o, h, l, c, v)
 
-
-def buildUrl(securityCode: str, timeFrameCode: int,
+def _buildUrl(securityCode: str, timeFrameCode: int,
              beginDate: datetime.datetime, endDate: datetime.datetime):
     params = {}
 
@@ -77,7 +74,7 @@ def buildUrl(securityCode: str, timeFrameCode: int,
     url += "&" + qstr
     return url
 
-def timeFrameCode(tf: Timeframe)->int:
+def _timeFrameCode(tf: Timeframe)->int:
     if tf == Timeframe.MINUTES5:
         return 2
     elif tf == Timeframe.HOURLY:

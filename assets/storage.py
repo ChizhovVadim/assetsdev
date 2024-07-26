@@ -2,19 +2,28 @@ import xml.etree.ElementTree as et
 import datetime
 import csv
 
-from .domaintypes import SecurityInfo, MyTrade, DividendSchedule, ReceivedDividend
+from .domaintypes import SecurityInfo, MyTrade, DividendSchedule, ReceivedDividend, SplitInfo
 
 def loadSecurityInfo(path: str)->dict[str,SecurityInfo]:
+    dateLayout = "%Y-%m-%d"
     tree = et.ElementTree(file=path)
     root = tree.getroot()
     result = {}
     for child in root:
+        splits = []
+        for xe in child.findall("SplitInfo"):
+            splits.append(SplitInfo(
+                datetime.datetime.strptime(xe.attrib["Date"], dateLayout),
+                int(xe.attrib["OldQuantity"]),
+                int(xe.attrib["NewQuantity"]),
+            ))
         entry = SecurityInfo(
             SecurityCode=child.attrib["Name"],
             Title=child.attrib["Title"],
             Number=child.attrib.get("Number", ""),
             FinamCode=child.attrib.get("FinamCode", ""),
             MfdCode=child.attrib.get("MfdCode", ""),
+            Splits=splits,
         )
         result[entry.SecurityCode]=entry
     return result
@@ -42,6 +51,22 @@ def loadMyTrades(path: str)->list[MyTrade]:
             item = _parseMyTrade(row)
             result.append(item)
     return result
+
+def saveMyTrades(path: str, myTrades: list[MyTrade]):
+    with open(path, 'w') as csvfile:
+        writer = csv.writer(csvfile, delimiter=',')
+        for t in myTrades:
+            data = [
+                t.SecurityCode,
+                t.DateTime.strftime(_dateTimeLayout),
+                t.ExecutionDate.strftime(_dateLayout),
+                t.Price,
+                t.Volume,
+                t.ExchangeComission,
+                t.BrokerComission,
+                t.Account,
+            ]
+            writer.writerow(data)
 
 def loadMyDividends(path: str)->list[DividendSchedule]:
     dateLayout = "%Y-%m-%d"

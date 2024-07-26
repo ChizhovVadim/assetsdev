@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 import datetime
 import argparse
-import os
 import sys
 
-from . import storage, domaintypes
+from . import storage, domaintypes, settings
 from internal import candles
 
 @dataclass
@@ -47,9 +46,7 @@ def buildBalanceReport(myTrades: list[domaintypes.MyTrade],
     return BalanceReport(date, account, items, totalAmount)
 
 def printReport(report: BalanceReport):
-    displayDateLayout = "%d.%m.%Y"
-
-    print(f"Балансовый отчет по брокерскому счету '{report.account}' на дату {report.date.strftime(displayDateLayout)}")
+    print(f"Балансовый отчет по брокерскому счету '{report.account}' на дату {report.date.strftime(settings.displayDateLayout)}")
     print(f"СЧА {report.totalAmount:,.0f}")
 
     print(f"{'Наименование':<12} {'Цена':>10} {'Кол-во':>10} {'Стоимость':>10} {'Вес':>6}")
@@ -63,9 +60,9 @@ def balanceHandler(argv):
     parser.add_argument('--date', type=datetime.datetime.fromisoformat, default=datetime.datetime.today())
     args = parser.parse_args(argv)
     
-    candleStorage = candles.CandleStorage(os.path.expanduser("~/TradingData/Portfolio"))
-    securityInfo = storage.loadSecurityInfo(os.path.expanduser("~/Data/assets/StockSettings.xml"))
-    myTrades = storage.loadMyTrades(os.path.expanduser("~/Data/assets/trades.csv"))
+    candleStorage = candles.CandleStorage(settings.candlesPath)
+    securityInfo = storage.loadSecurityInfo(settings.securityInfoPath)
+    myTrades = storage.loadMyTrades(settings.myTradesPath)
     printReport(buildBalanceReport(myTrades, candleStorage, securityInfo, args.account, args.date))
 
 if __name__ == "__main__":

@@ -1,10 +1,9 @@
-import os
 import sys
 import argparse
 from dataclasses import dataclass
 import datetime
 
-from . import storage, domaintypes
+from . import storage, domaintypes, settings
 
 @dataclass
 class DividendItem:
@@ -87,8 +86,7 @@ def _dividendTaxRate(d):
 def dateStr(d):
     if d is None:
         return ""
-    displayDateLayout = "%d.%m.%Y"
-    return d.strftime(displayDateLayout)
+    return d.strftime(settings.displayDateLayout)
 
 def _findPayment(items, account):
     for item in items:
@@ -103,9 +101,9 @@ def dividendHandler(argv):
 
     year = args.year
 
-    securityInfo = storage.loadSecurityInfo(os.path.expanduser("~/Data/assets/StockSettings.xml"))
-    myTrades = storage.loadMyTrades(os.path.expanduser("~/Data/assets/trades.csv"))
-    myDividends = storage.loadMyDividends(os.path.expanduser("~/Data/assets/Dividends.xml"))
+    securityInfo = storage.loadSecurityInfo(settings.securityInfoPath)
+    myTrades = storage.loadMyTrades(settings.myTradesPath)
+    myDividends = storage.loadMyDividends(settings.myDividendsPath)
     buildDividendReport(securityInfo, myTrades, myDividends, year)
 
 if __name__ == "__main__":

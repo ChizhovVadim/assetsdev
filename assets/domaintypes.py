@@ -1,12 +1,18 @@
 from typing import NamedTuple
 import datetime
 
+class SplitInfo(NamedTuple):
+    Date: datetime.datetime
+    OldQuantity: int
+    NewQuantity: int
+
 class SecurityInfo(NamedTuple):
     SecurityCode: str
     Title: str
     Number: str
     FinamCode: str
     MfdCode: str
+    Splits: list[SplitInfo]
 
 class MyTrade(NamedTuple):
     SecurityCode: str    

@@ -1,26 +1,24 @@
 import argparse
-import os
 import sys
 from dataclasses import dataclass
 import datetime
 
 from internal import xirr, candles
-from . import storage, domaintypes
+from . import storage, domaintypes, settings
 
 @dataclass
 class BalanceEntry:
     VolumeStart: int
     VolumeFinish: int
 
-#securityInfo будет нужен при учете сплита акций
 def buildPnLReport(securityInfo: dict[str,domaintypes.SecurityInfo],
                    myTrades: list[domaintypes.MyTrade],
                    myDividends: list[domaintypes.DividendSchedule],
                    candleStorage: candles.CandleStorage,
-    account: str,
-    startDate: datetime.datetime,
-    finishDate: datetime.datetime,
-    rateType: str):
+                   account: str,
+                   startDate: datetime.datetime,
+                   finishDate: datetime.datetime,
+                   rateType: str):
     today = datetime.datetime.today()
     if startDate is None:
         startDate = datetime.datetime(today.year, 1, 1)
@@ -78,7 +76,7 @@ def buildPnLReport(securityInfo: dict[str,domaintypes.SecurityInfo],
 
     benchmarkRate, benchmarkAnnualRate = calcBenchmark(candleStorage, startDate, finishDate)
 
-    displayDateLayout = "%d.%m.%Y"
+    displayDateLayout = settings.displayDateLayout
 
     print(f"Отчет о прибылях/убытках по брокерскому счету '{account}'")
     print(f"с '{startDate.strftime(displayDateLayout)}' по '{finishDate.strftime(displayDateLayout)}', {rateInfo.Years:.1f} лет")
@@ -111,10 +109,10 @@ def pnlHandler(argv):
     parser.add_argument('--finish', type=datetime.datetime.fromisoformat)
     args = parser.parse_args(argv)
 
-    candleStorage = candles.CandleStorage(os.path.expanduser("~/TradingData/Portfolio"))
-    securityInfo = storage.loadSecurityInfo(os.path.expanduser("~/Data/assets/StockSettings.xml"))
-    myTrades = storage.loadMyTrades(os.path.expanduser("~/Data/assets/trades.csv"))
-    myDividends = storage.loadMyDividends(os.path.expanduser("~/Data/assets/Dividends.xml"))
+    candleStorage = candles.CandleStorage(settings.candlesPath)
+    securityInfo = storage.loadSecurityInfo(settings.securityInfoPath)
+    myTrades = storage.loadMyTrades(settings.myTradesPath)
+    myDividends = storage.loadMyDividends(settings.myDividendsPath)
     buildPnLReport(securityInfo, myTrades, myDividends, candleStorage,
                                         args.account, args.start, args.finish, args.ratetype)
 

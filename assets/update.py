@@ -1,10 +1,14 @@
 import sys
 import logging
-import os
 import argparse
+import math
+import functools
+import datetime
 
 from internal import candles
-from . import domaintypes, storage
+import internal.candles.finam
+import internal.candles.mfd
+from . import domaintypes, storage, settings
 
 def holdingTickers(myTrades: list[domaintypes.MyTrade])->list[str]:
     d = {}
@@ -14,29 +18,51 @@ def holdingTickers(myTrades: list[domaintypes.MyTrade])->list[str]:
 
 def updateHandler(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--provider', type=str, required=True)
+    parser.add_argument('--provider', type=str)
     args = parser.parse_args(argv)
+    providerName = args.provider
 
-    myTrades = storage.loadMyTrades(os.path.expanduser("~/Data/assets/trades.csv"))
-    candleStorage = candles.CandleStorage(os.path.expanduser("~/TradingData/Portfolio"))
-    securityInfo = storage.loadSecurityInfo(os.path.expanduser("~/Data/assets/StockSettings.xml"))
+    myTrades = storage.loadMyTrades(settings.myTradesPath)
+    candleStorage = candles.CandleStorage(settings.candlesPath)
+    securityInfo = storage.loadSecurityInfo(settings.securityInfoPath)
 
     tf = candles.Timeframe.DAILY
-    # or providers="finam,mfd"?
-    providerName = args.provider
-    if providerName == "finam":
+    providers = []
+
+    if providerName is None or providerName == "finam":
         finamCodes = { key: val.FinamCode for key, val in securityInfo.items() }
-        provider = candles.FinamProvider(finamCodes, tf)
-    elif providerName == "mfd":
+        finamProvider = functools.partial(internal.candles.finam.load, timeFrame=tf, secCodes=finamCodes)
+        providers.append(finamProvider)
+
+    if providerName is None or providerName == "mfd":
         mfdCodes = { key: val.MfdCode for key, val in securityInfo.items() }
-        provider = candles.MfdProvider(mfdCodes, tf)
-    else:
-        raise ValueError("wrong provider", providerName)
-    candleUpdateService = candles.CandleUpdateService(provider, candleStorage)
+        mfdProvider = functools.partial(internal.candles.mfd.load, timeFrame=tf, secCodes=mfdCodes)
+        providers.append(mfdProvider)
+
     tickers = holdingTickers(myTrades)
     BenchmarkIndex = "MCFTRR"
     tickers.append(BenchmarkIndex)
-    candleUpdateService.updateGroup(tickers)
+
+    candles.updateGroup(providers,
+                        candleStorage,
+                        lambda _:datetime.datetime(year=2013, month=1, day=1),
+                        functools.partial(checkPriceChange, securityInfo=securityInfo),
+                        tickers)
+
+def checkPriceChange(securityCode: str, x: candles.Candle, y: candles.Candle,
+                     securityInfo: dict[str, domaintypes.SecurityInfo]):
+    closeChange = abs(math.log(x.C/y.C))
+    openChange = abs(math.log(x.C/y.O))
+    width = 0.25
+    if not(openChange >= width and closeChange >= width):
+        return
+    if securityInfo is not None:
+        splits = securityInfo[securityCode].Splits
+        for split in splits:
+            if x.DateTime < split.Date < y.DateTime:
+                logging.warning(f"split found {split}")
+                return
+    raise ValueError("big jump", securityCode, x, y)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
