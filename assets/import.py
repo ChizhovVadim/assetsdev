@@ -11,7 +11,7 @@ def importHandler(argv):
     parser.add_argument('--account', type=str, required=True)
     args = parser.parse_args(argv)
 
-    path = os.path.expanduser("~/srv.txt")
+    path = os.path.expanduser("~/src.txt")
     myTrades=loadMyTradesSberbank(path, args.account)
     storage.saveMyTrades(os.path.expanduser("~/dst.txt"), myTrades)
 

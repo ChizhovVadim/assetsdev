@@ -25,7 +25,6 @@ def afterLongHoliday(l: datetime.datetime, r: datetime.datetime)-> bool:
     if startDate == finishDate:
         return False
     # приостановка торгов, выйти заранее невозможно
-    global _warDate
     if startDate == _warDate:
         return False
     d = startDate+datetime.timedelta(days=1)

@@ -19,6 +19,7 @@ def holdingTickers(myTrades: list[domaintypes.MyTrade])->list[str]:
 def updateHandler(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('--provider', type=str)
+    parser.add_argument('--security', type=str)
     args = parser.parse_args(argv)
     providerName = args.provider
 
@@ -39,9 +40,12 @@ def updateHandler(argv):
         mfdProvider = functools.partial(internal.candles.mfd.load, timeFrame=tf, secCodes=mfdCodes)
         providers.append(mfdProvider)
 
-    tickers = holdingTickers(myTrades)
-    BenchmarkIndex = "MCFTRR"
-    tickers.append(BenchmarkIndex)
+    if args.security:
+        tickers = [args.security]
+    else:
+        tickers = holdingTickers(myTrades)
+        BenchmarkIndex = "MCFTRR"
+        tickers.append(BenchmarkIndex)
 
     candles.updateGroup(providers,
                         candleStorage,

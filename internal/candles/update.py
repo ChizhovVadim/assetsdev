@@ -7,6 +7,9 @@ from collections.abc import Callable
 from .storage import CandleStorage
 from .domaintypes import Candle
 
+_logger = logging.getLogger("candles.update")
+_logger.setLevel(logging.INFO)
+
 def updateGroup(
     candleProviders,
     candleStorage: CandleStorage,
@@ -16,7 +19,7 @@ def updateGroup(
 ):
     if not candleProviders:
         raise ValueError("providers empty")
-    logging.info(f"updateGroup {len(securityCodes)} items")
+    _logger.info(f"updateGroup {len(securityCodes)} items")
     secCodesFailed = []
     for secCode in securityCodes:
         try:
@@ -25,7 +28,7 @@ def updateGroup(
             secCodesFailed.append(secCode)
         time.sleep(1)
     if len(secCodesFailed) != 0:
-        logging.warning(f"update failed {len(secCodesFailed)} {secCodesFailed}")
+        _logger.warning(f"update failed {len(secCodesFailed)} {secCodesFailed}")
 
 def updateSignle(
     candleProviders,
@@ -37,7 +40,7 @@ def updateSignle(
     try:
         lastCandle = candleStorage.last(securityCode)
     except OSError as e:
-        logging.warning(f"no existing data {securityCode} {e}")
+        _logger.warning(f"no existing data {securityCode} {e}")
         lastCandle = None
 
     if lastCandle is None:
@@ -61,14 +64,14 @@ def updateSignle(
         candles = list(itertools.dropwhile(lambda x: x.DateTime <= lastCandle.DateTime, candles))
 
     if not candles:
-        logging.info(f"no new candles {securityCode}")
+        _logger.info(f"no new candles {securityCode}")
         return
 
     if lastCandle is not None and \
         checkCandles is not None:
         checkCandles(securityCode, lastCandle, candles[0])
 
-    logging.info(f"downloaded {securityCode} {len(candles)} {candles[0]} {candles[-1]}")
+    _logger.info(f"downloaded {securityCode} {len(candles)} {candles[0]} {candles[-1]}")
     candleStorage.update(securityCode, candles)
 
 def _downloadCandles(candleProviders,
@@ -81,7 +84,7 @@ def _downloadCandles(candleProviders,
             if not candles:
                 raise ValueError("download empty", securityCode, beginDate, endDate)
         except Exception as e:
-            logging.warning(f"update failed {securityCode} {e}")
+            _logger.warning(f"update failed {securityCode} {e}")
         else:
             return candles
         

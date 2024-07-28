@@ -26,7 +26,7 @@ class MyTrade(NamedTuple):
 
 class ReceivedDividend(NamedTuple):
     Account: str
-    Date: datetime.date
+    Date: datetime.datetime
     Sum: float
 
 class DividendSchedule(NamedTuple):

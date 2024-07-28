@@ -20,9 +20,9 @@ def loadSecurityInfo(path: str)->dict[str,SecurityInfo]:
         entry = SecurityInfo(
             SecurityCode=child.attrib["Name"],
             Title=child.attrib["Title"],
-            Number=child.attrib.get("Number", ""),
-            FinamCode=child.attrib.get("FinamCode", ""),
-            MfdCode=child.attrib.get("MfdCode", ""),
+            Number=child.attrib.get("Number"),
+            FinamCode=child.attrib.get("FinamCode"),
+            MfdCode=child.attrib.get("MfdCode"),
             Splits=splits,
         )
         result[entry.SecurityCode]=entry

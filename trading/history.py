@@ -24,7 +24,7 @@ def historyHandler(argv):
 	parser.add_argument('--security', type=str, default="CNY")
 	parser.add_argument('--startyear', type=int, default=2022)
 	parser.add_argument('--startquarter', type=int, default=2)
-	parser.add_argument('--lever', type=float, default=9.0)
+	parser.add_argument('--lever', type=float)
 	args = parser.parse_args(argv)
 	print(args)
 
@@ -38,7 +38,10 @@ def historyHandler(argv):
 	candleStorage = candles.CandleStorage(settings.candlesPath)
 
 	hprs = multiContractHprs(candleStorage, tickers, 0.0002, dateutils.afterLongHoliday)
-	hprs = hpr.applyLever(hprs, args.lever)# or optimal lever
+	lever = args.lever if args.lever else hpr.optimalLever(hprs, hpr.limitStdev(0.045))
+	print(f"Плечо {lever:.1f}")
+	hprs = hpr.applyLever(hprs, lever)
+
 	stat = statistic.computeHprStatistcs(hprs)
 	statistic.printReport(stat)
 
