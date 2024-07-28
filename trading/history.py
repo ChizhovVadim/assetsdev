@@ -3,6 +3,7 @@ import argparse
 import logging
 import time
 import itertools
+import multiprocessing
 from typing import NamedTuple
 
 from trading import advisor, hpr, statistic, settings, dateutils, domaintypes
@@ -58,6 +59,13 @@ def quarterSecurityCodes(name: str, tr: TimeRange)-> list[str]:
 			res.append(f"{name}-{3+quarter*3}.{year%100:02}")
 	return res
 
+def contractHprs(args)->list[domaintypes.DateSum]:
+	(candleStorage,secCode,slippage,skipPnl) = args
+	advisor = buildAdvisor()
+	advices = (advice for candle in candleStorage.read(secCode)
+		if (advice := advisor(candle)) is not None)
+	return hpr.calcHprs(advices, slippage=slippage, skipPnl=skipPnl)
+
 def multiContractHprs(
 	candleStorage,
 	secCodes,
@@ -66,12 +74,10 @@ def multiContractHprs(
 	)->list[domaintypes.DateSum]:
 
 	hprByContract = []
-	for secCode in secCodes:
-		advisor = buildAdvisor()
-		advices = (advice for candle in candleStorage.read(secCode)
-			if (advice := advisor(candle)) is not None)
-		hprs = hpr.calcHprs(advices, slippage=slippage, skipPnl=skipPnl)
-		hprByContract.append(hprs)
+	with multiprocessing.Pool() as pool:
+		args = ((candleStorage, secCode, slippage, skipPnl) for secCode in secCodes)
+		for hprs in pool.map(contractHprs, args):
+			hprByContract.append(hprs)
 	return concatHprs(hprByContract)
 
 def concatHprs(hprByContract)->list[domaintypes.DateSum]:
