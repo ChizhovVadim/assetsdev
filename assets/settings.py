@@ -1,7 +1,11 @@
 import os
 
 displayDateLayout = "%d.%m.%Y"
-candlesPath = os.path.expanduser("~/TradingData/Portfolio")
+
+benchmarkSecCode = "MCFTR" #Индекс МосБиржи полной доходности брутто
+"Бенчмарк для акций"
+
+candlesPath = os.path.expanduser("~/TradingData")
 securityInfoPath = os.path.expanduser("~/Data/assets/StockSettings.xml")
-myTradesPath = os.path.expanduser("~/Data/assets/trades.csv")
 myDividendsPath = os.path.expanduser("~/Data/assets/Dividends.xml")
+myTradesPath = os.path.expanduser("~/Data/assets/trades.csv")
