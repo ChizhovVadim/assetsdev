@@ -2,15 +2,16 @@ import argparse
 import logging
 import os
 import datetime
+import queue
 
 import candles
 from trading import settings
-from trading import advisors
+from trading.advisors import testAdvisor
 
 from .mocktrader import MockTrader
 from .quiktrader import QuikTrader
 from .storage import loadSettings
-from .strategy import Strategy
+from .strategy import Advisor, Strategy
 from .import forts
 from .import domaintypes
 
@@ -63,37 +64,52 @@ def trade(canldeStorage: candles.CandleStorage,
             if availableAmount == 0:
                   logging.warning("availableAmount zero")
 
+            q = queue.Queue()
+
+            advisors = []
             strategies = []
             for config in strategyConfigs:
-                  strategy = Strategy(
-                        advisor=advisors.testAdvisor(config.Name),
-                        security=forts.getSecurityInfo(config.SecurityCode),
-                        amount=availableAmount,
-                        lever=config.Lever*config.Weight,
-                        maxLever=config.MaxLever*config.Weight,
-                        start=start,
-                  )
-                  strategy.initCandles(canldeStorage.read(config.SecurityCode))
-                  strategies.append(strategy)
+                  security=forts.getSecurityInfo(config.SecurityCode)
 
-            for strategy in strategies:
-                  new_bars = trader.getLastCandles(strategy._security, settings.defaultCandleInterval)
+                  advisor = Advisor(
+                        advisor=testAdvisor(config.Name),
+                        security=security,
+                        start=start,
+                        queue=q,
+                  )
+                  advisor.initCandles(canldeStorage.read(config.SecurityCode))
+                  new_bars = trader.getLastCandles(security, settings.defaultCandleInterval)
                   if not new_bars:
                         logging.warning("Quik candles empty")
                   else:
                         logging.info(f"Quik candles {len(new_bars)} {new_bars[0]} {new_bars[-1]}")
-                        strategy.initCandles(new_bars)
+                        advisor.initCandles(new_bars)
+                  advisors.append(advisor)
+
+                  strategy = Strategy(
+                        trader=trader,
+                        portfolio=portfolio,
+                        security=security,
+                        amount=availableAmount,
+                        lever=config.Lever*config.Weight,
+                        maxLever=config.MaxLever*config.Weight,
+                  )
+                  strategies.append(strategy)
 
             def onNewCandle(candle: candles.Candle):
-                  for strategy in strategies:
-                        strategy.onNewCandle(candle)
+                  for advisor in advisors:
+                        advisor.onNewCandle(candle)
 
             trader.setNewCandleCallback(onNewCandle)
             for strategy in strategies:
                   logging.debug(f"SubscribeToCandles {strategy._security.Name}")
+                  # WARN Подписываемся, но читать еще не начали
                   trader.subscribeCandles(strategy._security, settings.defaultCandleInterval)
 
-            input("Enter - выход\n")
+            while True:
+                  advice = q.get()
+                  for strategy in strategies:
+                        strategy.onNewAdvice(advice)
             #quik.UnsubscribeFromCandles
       finally:
             trader.close()

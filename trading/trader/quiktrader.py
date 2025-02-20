@@ -28,8 +28,10 @@ class QuikTrader:
 
 	def getLastCandles(self, security: domaintypes.SecurityInfo,
 					candleInterval: candles.CandleInterval)-> list[candles.Candle]:
+		#Если не указывать размер, то может прийти слишком много баров и unmarshal большой json
+		MaxBars = 5_000
 		new_bars = self._quik.GetCandlesFromDataSource(
-			security.ClassCode, security.Code, _quikTimeframe(candleInterval), 0)['data']
+			security.ClassCode, security.Code, _quikTimeframe(candleInterval), MaxBars)['data']
 		new_bars = [_parseQuikCandle(c) for c in new_bars]
 		# последний бар за сегодня может быть не завершен
 		if new_bars and new_bars[-1].DateTime.date() == datetime.date.today():
@@ -47,12 +49,14 @@ class QuikTrader:
 	def getPosition(self, portfolio: domaintypes.PortfolioInfo,
 				 security: domaintypes.SecurityInfo)-> float:
 		if security.ClassCode == forts.FUTURESCLASSCODE:
-			resp = self._quik.GetFuturesHolding(portfolio.Firm, portfolio.Portfolio, security.Code)
+			resp = self._quik.GetFuturesHolding(portfolio.Firm, portfolio.Portfolio, security.Code, 0)
 			return float(resp["data"]["totalnet"])
 
 		raise NotImplementedError()
 	
 	def registerOrder(self, order: domaintypes.Order):
+		pass
+"""
 		transaction = {  # Все значения должны передаваться в виде строк
 			'ACTION': 'NEW_ORDER',
 			'SECCODE': order.Security.Code,
@@ -71,7 +75,7 @@ class QuikTrader:
 			transaction['QUANTITY'] = str(-order.Volume)
 
 		self._quik.SendTransaction(transaction)
-
+"""
 
 def _quikTimeframe(candleInterval: candles.CandleInterval):
 	if candleInterval == candles.CandleInterval.MINUTES5:
