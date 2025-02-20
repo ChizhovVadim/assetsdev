@@ -39,7 +39,7 @@ $python3 -m assets.portfolio.cmd_import_sber
 ```
 
 ## trading
-Пакет trading позволяет скачивать котировки фьючерсов и тестировать на истории торговые стратегии.
+Пакет trading позволяет скачивать котировки фьючерсов, тестировать на истории торговые стратегии, вести автоматическую торговлю стратегий.
 
 - Скачивает исторические котировки (для отладки).
 ```
@@ -59,4 +59,9 @@ $python3 -m trading.history.cmd_status --security Si-3.25 --advisor main
 - Тестирует на истории торгового советника.
 ```
 $python3 -m trading.history.cmd_history --security Si --startyear 2009 --advisor main
+```
+
+- Запускает автоматическую торговлю.
+```
+$python3 -m trading.trader --client key
 ```

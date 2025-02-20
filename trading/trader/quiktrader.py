@@ -1,4 +1,5 @@
 import datetime
+import typing
 
 import candles
 from .import domaintypes
@@ -11,15 +12,21 @@ class QuikTrader:
 		# Игорь Чечет https://github.com/cia76/QuikPy
 		# Есть также библиотеки для работы с finam, alor, T-invest: https://github.com/cia76?tab=repositories
 		self._quik = QuikPy(requests_port=port, callbacks_port=port+1)
+		self._transId = 1  #TODO init
 
-	def Close(self):
+	def close(self):
 		self._quik.CloseConnectionAndThread()
 
-	def IsConnected(self)-> bool:
+	def setNewCandleCallback(self, handler: typing.Callable[[candles.Candle],None]):
+		def f(data):
+			handler(_parseQuikCandle(data["data"]))
+		self._quik.OnNewCandle = f
+
+	def isConnected(self)-> bool:
 		resp = self._quik.IsConnected()
 		return resp["data"] == 1
 
-	def GetLastCandles(self, security: domaintypes.SecurityInfo,
+	def getLastCandles(self, security: domaintypes.SecurityInfo,
 					candleInterval: candles.CandleInterval)-> list[candles.Candle]:
 		new_bars = self._quik.GetCandlesFromDataSource(
 			security.ClassCode, security.Code, _quikTimeframe(candleInterval), 0)['data']
@@ -29,22 +36,41 @@ class QuikTrader:
 			new_bars.pop()
 		return new_bars
 	
-	def SubscribeCandles(self, security: domaintypes.SecurityInfo,
+	def subscribeCandles(self, security: domaintypes.SecurityInfo,
 					  candleInterval: candles.CandleInterval):
 		self._quik.SubscribeToCandles(security.ClassCode, security.Code, _quikTimeframe(candleInterval))
 	
-	def IncomingAmount(self, portfolio: domaintypes.PortfolioInfo)-> float:
+	def incomingAmount(self, portfolio: domaintypes.PortfolioInfo)-> float:
 		resp = self._quik.GetPortfolioInfoEx(portfolio.Firm, portfolio.Portfolio, 0)
 		return float(resp["data"]["start_limit_open_pos"])
 	
-	def GetPosition(self, portfolio: domaintypes.PortfolioInfo,
-				 security: domaintypes.SecurityInfo)-> int:
-		#if security.ClassCode == forts.FUTURESCLASSCODE:
+	def getPosition(self, portfolio: domaintypes.PortfolioInfo,
+				 security: domaintypes.SecurityInfo)-> float:
+		if security.ClassCode == forts.FUTURESCLASSCODE:
+			resp = self._quik.GetFuturesHolding(portfolio.Firm, portfolio.Portfolio, security.Code)
+			return float(resp["data"]["totalnet"])
 
 		raise NotImplementedError()
 	
-	def RegisterOrder(self, order: domaintypes.Order):
-		raise NotImplementedError()
+	def registerOrder(self, order: domaintypes.Order):
+		transaction = {  # Все значения должны передаваться в виде строк
+			'ACTION': 'NEW_ORDER',
+			'SECCODE': order.Security.Code,
+			'CLASSCODE': order.Security.ClassCode,
+			'ACCOUNT': order.Portfolio.Portfolio,
+			'PRICE': forts.formatPrice(order.Price, order.Security.PricePrecision, order.Security.PriceStep),
+			'TRANS_ID': str(self._transId),
+			'CLIENT_CODE': str(self._transId),
+		}
+		self._transId += 1
+		if order.Volume>0:
+			transaction['OPERATION'] = "B"
+			transaction['QUANTITY'] = str(order.Volume)
+		else:
+			transaction['OPERATION'] = "S"
+			transaction['QUANTITY'] = str(-order.Volume)
+
+		self._quik.SendTransaction(transaction)
 
 
 def _quikTimeframe(candleInterval: candles.CandleInterval):

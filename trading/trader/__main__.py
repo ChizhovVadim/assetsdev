@@ -10,10 +10,9 @@ from trading import advisors
 from .mocktrader import MockTrader
 from .quiktrader import QuikTrader
 from .storage import loadSettings
+from .strategy import Strategy
 from .import forts
 from .import domaintypes
-
-today = datetime.datetime.today()
 
 def traderHandler():
       parser = argparse.ArgumentParser()
@@ -45,77 +44,59 @@ def traderHandler():
 
       trade(canldeStorage, client, traderSettings.StrategyConfigs)
 
-class Strategy:
-      def __init__(self,
-                   canldeStorage: candles.CandleStorage,
-                   config: domaintypes.StrategyConfig):
-            
-            secInfo = forts.getSecurityInfo(config.SecurityCode)
-            advisor = advisors.testAdvisor(config.Name)
-
-            initAdvice = None
-            for candle in canldeStorage.read(config.SecurityCode):
-                  advice = advisor(candle)
-                  if advice is not None:
-                        initAdvice = advice
-            logging.info(f"Init advice {initAdvice}")
-
-            self._security = secInfo
-            self._advisor = advisor
-            self._lastAdvice = initAdvice
-
-      def onNewCadnle(self, candle: candles.Candle):
-            if self._security.Code != candle.SecurityCode:
-                  return
-            advice = self._advisor(candle)
-            if advice is None:
-                  return
-            if advice.DateTime >= today:
-                  logging.info(f"Advice changed {advice}")
-            self._lastAdvice = advice
-
-
 def trade(canldeStorage: candles.CandleStorage,
           client: domaintypes.Client,
           strategyConfigs: list[domaintypes.StrategyConfig]):
       
-      strategies = []
-      for config in strategyConfigs:
-            strategies.append(Strategy(canldeStorage, config))
-
-      def onNewCandle(candle):
-            for strategy in strategies:
-                  strategy.onNewCadnle(candle)
+      start = datetime.datetime.today()+datetime.timedelta(minutes=-10)
       
-      trader = MockTrader()
-      #trader = QuikTrader(client.Port)
+      #trader = MockTrader()
+      trader = QuikTrader(client.Port)
       try:
-            if not trader.IsConnected():
+            if not trader.isConnected():
                   raise RuntimeError("quik is not connected")
             
             portfolio = domaintypes.PortfolioInfo(Firm=client.Firm, Portfolio=client.Portfolio)
-            startAmount = trader.IncomingAmount(portfolio)
+            startAmount = trader.incomingAmount(portfolio)
             availableAmount = _calcAvailableAmount(startAmount, client)
             logging.info(f"Init portfolio amount {startAmount} availableAmount {availableAmount}")
+            if availableAmount == 0:
+                  logging.warning("availableAmount zero")
 
-            #quik.OnNewCandle = onNewCandle            
+            strategies = []
+            for config in strategyConfigs:
+                  strategy = Strategy(
+                        advisor=advisors.testAdvisor(config.Name),
+                        security=forts.getSecurityInfo(config.SecurityCode),
+                        amount=availableAmount,
+                        lever=config.Lever*config.Weight,
+                        maxLever=config.MaxLever*config.Weight,
+                        start=start,
+                  )
+                  strategy.initCandles(canldeStorage.read(config.SecurityCode))
+                  strategies.append(strategy)
+
             for strategy in strategies:
-                  new_bars = trader.GetLastCandles(strategy._security, settings.defaultCandleInterval)
+                  new_bars = trader.getLastCandles(strategy._security, settings.defaultCandleInterval)
                   if not new_bars:
                         logging.warning("Quik candles empty")
                   else:
                         logging.info(f"Quik candles {len(new_bars)} {new_bars[0]} {new_bars[-1]}")
-                        for candle in new_bars:
-                              strategy.onNewCadnle(candle)
-                        logging.info(f"Init advice with quik candles {strategy._lastAdvice}")
+                        strategy.initCandles(new_bars)
 
+            def onNewCandle(candle: candles.Candle):
+                  for strategy in strategies:
+                        strategy.onNewCandle(candle)
+
+            trader.setNewCandleCallback(onNewCandle)
+            for strategy in strategies:
                   logging.debug(f"SubscribeToCandles {strategy._security.Name}")
-                  trader.SubscribeCandles(strategy._security, settings.defaultCandleInterval)
+                  trader.subscribeCandles(strategy._security, settings.defaultCandleInterval)
 
             input("Enter - выход\n")
             #quik.UnsubscribeFromCandles
       finally:
-            trader.Close()
+            trader.close()
 
 def _calcAvailableAmount(amount: float, client: domaintypes.Client)-> float:
 	if client.Amount:

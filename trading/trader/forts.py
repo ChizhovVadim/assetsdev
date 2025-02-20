@@ -1,6 +1,15 @@
+import datetime
+
 from .domaintypes import SecurityInfo
 
+TIMEZONE = datetime.timezone(datetime.timedelta(hours=+3), name="MSK")
+
 FUTURESCLASSCODE = "SPBFUT"
+
+def formatPrice(price: float, pricePrecision: int, priceStep: float)-> str:
+	if priceStep:
+		price =  round(price / priceStep) * priceStep
+	return f"{price:.{pricePrecision}f}"
 
 def encodeSecurity(securityCode: str)->str:
 	"""
