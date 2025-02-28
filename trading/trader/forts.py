@@ -52,7 +52,7 @@ def getSecurityInfo(securityName: str)->SecurityInfo:
         return SecurityInfo(
             Name=securityName,
             ClassCode=FUTURESCLASSCODE,
-            Code=encodeSecurity(securityName),
+            Code=encodeSecurity(securityName),# можно здесь replace("CNY", "CR")
             PricePrecision= 3,
 			PriceStep=      0.001,
 			PriceStepCost=  1,

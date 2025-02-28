@@ -9,7 +9,7 @@ def lastDayOfYear(d: datetime.datetime):
     return datetime.datetime(d.year, 12, 31)
 
 def isNewDayStarted(l: datetime.datetime, r: datetime.datetime)-> bool:
-    return r.date() != r.date()
+    return l.date() != r.date()
 
 def isMainFortsSession(d: datetime.datetime)-> bool:
     return d.hour >= 10 and d.hour <= 18

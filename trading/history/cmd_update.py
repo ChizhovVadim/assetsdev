@@ -10,7 +10,7 @@ from candles.update.candleprovider import newCandleProvider
 from candles.update.update import updateGroup
 
 from trading import settings
-from trading import moex
+from . import moex
 
 def updateHandler():
     logging.basicConfig(level=logging.INFO)
@@ -50,8 +50,8 @@ def checkPriceChange(securityCode: str,
                      ):
     "Кидает ValueError, если большая разница цен x и y."
         
-    closeChange = abs(math.log(x.C / y.C))
-    openChange = abs(math.log(x.C / y.O))
+    closeChange = abs(math.log(x.ClosePrice / y.ClosePrice))
+    openChange = abs(math.log(x.ClosePrice / y.OpenPrice))
 
     if not(openChange >= width and closeChange >= width):
         return

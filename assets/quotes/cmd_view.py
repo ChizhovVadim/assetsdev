@@ -29,8 +29,8 @@ def buildChangesReport(start: datetime.datetime,
         finishCandle = candleStorage.candleByDate(ticker, finish)
         if startCandle and finishCandle:
             sr, divs = _caclSplitRatioAndDividends(start, finish, si, dividends)
-            change = (finishCandle.C+divs)/startCandle.C*sr
-            list.append(QuoteEntry(title, finishCandle.C, change))
+            change = (finishCandle.ClosePrice+divs)/startCandle.ClosePrice*sr
+            list.append(QuoteEntry(title, finishCandle.ClosePrice, change))
     list.sort(key=lambda x:x.change, reverse=True)
 
     for entry in list:

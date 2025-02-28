@@ -8,7 +8,7 @@ from collections.abc import Callable
 import candles
 
 from trading import advisors
-from trading import moex
+from . import moex
 from trading import settings
 from trading import dateutils
 
@@ -29,21 +29,43 @@ def historyHandler():
     parser.add_argument('--startyear', type=int, default=today.year)
     parser.add_argument('--startquarter', type=int, default=0)
     parser.add_argument('--lever', type=float)
+    parser.add_argument('--single', action="store_true")
     #TODO endquarter
     #TODO slippage
-    #TODO multy
     args = parser.parse_args()
     candleInterval = candles.CandleInterval(args.timeframe)
 
+    DEFAULT_SLIPPAGE = ((0.00462+0.00154)*2 + 0.01) * 0.01
+
     candleStorage = candles.CandleStorage(settings.candlesPath, candleInterval)
+    advisorReport(candleStorage, args.advisor, args.security, args.lever, DEFAULT_SLIPPAGE,
+                  args.startyear, args.startquarter, 2025, 0, args.single)
 
-    tickers = moex.quarterSecurityCodes(args.security, moex.TimeRange(args.startyear, args.startquarter, today.year, 0))
-    hprs = multiContractHprs(args.advisor, candleStorage, tickers, 0.0002, dateutils.afterLongHoliday)
-
-    lever = args.lever if args.lever else optimalLever(hprs, limitStdev(0.045))
-    print(f"Плечо {lever:.1f}")
+def advisorReport(
+    candleStorage: candles.CandleStorage,
+    advisorName: str,
+    securityName: str,
+    lever: float,
+    slippage: float,
+    startyear: int,
+    startQuarter: int,
+    finishYear: int,
+    finishQuarter: int,
+    singleContract: bool,
+):
+    if singleContract:
+        tickers = [securityName]
+    else:
+        tickers = moex.quarterSecurityCodes(
+            securityName, moex.TimeRange(startyear, startQuarter, finishYear, finishQuarter))
+        
+    hprs = multiContractHprs(advisorName, candleStorage, tickers, slippage, dateutils.afterLongHoliday)
+    lever = lever or optimalLever(hprs, limitStdev(0.045))
     hprs = applyLever(hprs, lever)
     stat = statistic.computeHprStatistcs(hprs)
+
+    print(f"Отчет {advisorName} {securityName}")
+    print(f"Плечо {lever:.1f}")
     statistic.printReport(stat)
 
 def singleContractHprs(args)->list[DateSum]:

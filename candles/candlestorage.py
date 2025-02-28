@@ -6,16 +6,15 @@ from collections.abc import Generator
 from .domaintypes import Candle, CandleInterval
 
 class CandleStorage:
-    _historyCandlesFolder: str
-    
+
     # candleInterval в конструктор, иначе пришлось бы добавлять его во все методы
     def __init__(self, historyCandlesFolder: str, candleInterval: CandleInterval):
          self._historyCandlesFolder = os.path.join(historyCandlesFolder, candleInterval)
 
-    def fileName(self, securityCode: str):
+    def _fileName(self, securityCode: str):
         return os.path.join(self._historyCandlesFolder, securityCode+".txt")
 
-    def parseCandle(self, row, securityCode: str)->Candle:
+    def _parseCandle(self, row, securityCode: str)->Candle:
         dt = datetime.datetime.strptime(row[2], "%Y%m%d")
         t = int(row[3])
 
@@ -31,17 +30,17 @@ class CandleStorage:
         return Candle(securityCode, dt,o,h,l,c,v)
 
     def read(self, securityCode: str)->Generator[Candle]:
-        with open(self.fileName(securityCode), 'r') as csvfile:
+        with open(self._fileName(securityCode), 'r') as csvfile:
             reader = csv.reader(csvfile, delimiter=',',)
             # skip header
             next(reader)
             for row in reader:
-                yield self.parseCandle(row, securityCode)
+                yield self._parseCandle(row, securityCode)
 
     # Дописываем свечи в конец файла
     # TODO Если файл новый, то добавлять заголовок?
     def update(self, securityCode: str, candles: list[Candle]):
-        path = self.fileName(securityCode)
+        path = self._fileName(securityCode)
         with open(path, 'a') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
             for c in candles:
@@ -50,11 +49,11 @@ class CandleStorage:
                     "5",
                     c.DateTime.strftime("%Y%m%d"),
                     (c.DateTime.minute+100*c.DateTime.hour)*100,
-                    c.O,#TODO f
-                    c.H,
-                    c.L,
-                    c.C,
-                    c.V,
+                    c.OpenPrice,#TODO f
+                    c.HighPrice,
+                    c.LowPrice,
+                    c.ClosePrice,
+                    c.Volume,
                 ]
                 writer.writerow(data)
 

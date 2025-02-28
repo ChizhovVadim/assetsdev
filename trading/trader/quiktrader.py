@@ -1,5 +1,6 @@
 import datetime
 import typing
+import logging
 
 import candles
 from .import domaintypes
@@ -50,7 +51,11 @@ class QuikTrader:
 				 security: domaintypes.SecurityInfo)-> float:
 		if security.ClassCode == forts.FUTURESCLASSCODE:
 			resp = self._quik.GetFuturesHolding(portfolio.Firm, portfolio.Portfolio, security.Code, 0)
-			return float(resp["data"]["totalnet"])
+			data = resp.get("data")
+			if data is None:
+				logging.warning(f"Position {security.Name} empty.")
+				return 0.0
+			return float(data["totalnet"])
 
 		raise NotImplementedError()
 	
@@ -95,8 +100,8 @@ def _parseQuikCandle(row) -> candles.Candle:
 	return candles.Candle(
         SecurityCode=row["sec"],
 		DateTime=_parseQuikDateTime(row["datetime"]),
-		O=float(row["open"]),
-		H=float(row["high"]),
-		L=float(row["low"]),
-		C=float(row["close"]),
-		V=float(row["volume"]))
+		OpenPrice=float(row["open"]),
+		HighPrice=float(row["high"]),
+		LowPrice=float(row["low"]),
+		ClosePrice=float(row["close"]),
+		Volume=float(row["volume"]))

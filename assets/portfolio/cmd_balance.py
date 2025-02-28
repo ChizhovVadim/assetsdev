@@ -40,7 +40,7 @@ def buildBalanceReport(myTrades: list[MyTrade],
     items = []
     for securityCode, volume in volumes.items():
         if volume==0: continue
-        price = candleStorage.candleByDate(securityCode, date).C
+        price = candleStorage.candleByDate(securityCode, date).ClosePrice
         amount = price*volume
         title = securityInfo[securityCode].Title
         items.append(BalanceEntry(title, price, volume, amount, 0.0))

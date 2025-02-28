@@ -9,7 +9,7 @@ from trading import dateutils
 from .datesum import DateSum
 
 class DrawdownInfo(NamedTuple):
-	HighEquityDate: datetime.datetime
+	HighEquityDate: datetime.date
 	MaxDrawdown: float
 	LongestDrawdown: int
 	CurrentDrawdown: float
@@ -36,8 +36,8 @@ def computeHprStatistcs(hprs: list[DateSum])-> HprStatistcs:
 		StDev=stdev,
 		AVaR=calcAvar(hprs),
 		DayHprs=hprs,
-		MonthHprs=hprsByPeriod(hprs, dateutils.lastDayOfMonth),
-		YearHprs=hprsByPeriod(hprs, dateutils.lastDayOfYear),
+		MonthHprs=hprsByPeriod(hprs, dateutils.lastDayOfMonth),# ф-ция datetime для date объектов
+		YearHprs=hprsByPeriod(hprs, dateutils.lastDayOfYear),# ф-ция datetime для date объектов
 		DrawdownInfo=compute_drawdown_info(hprs),
 	)
 
@@ -52,7 +52,7 @@ def hprsByPeriod(hprs: list[DateSum], period)-> list[DateSum]:
 	lastDate = None
 	lastHpr = 1.0
 	for hpr in hprs:
-		curPeriod = period(hpr.DateTime)
+		curPeriod = period(hpr.Date)
 		if lastDate is not None and period(lastDate) != curPeriod:
 			result.append(DateSum(lastDate, lastHpr))
 			lastHpr = 1.0
@@ -68,17 +68,17 @@ def compute_drawdown_info(hprs: list[DateSum])-> DrawdownInfo:
 	longestDrawdown = 0
 	currentDrawdownDays = 0
 	maxDrawdown = 0.0
-	highEquityDate = hprs[0].DateTime
+	highEquityDate = hprs[0].Date
 
 	for hpr in hprs:
 		currentSum += math.log(hpr.Sum)
 		if currentSum > maxSum:
 			maxSum = currentSum
-			highEquityDate = hpr.DateTime
+			highEquityDate = hpr.Date
 		curDrawdown = currentSum - maxSum
 		if curDrawdown < maxDrawdown:
 			maxDrawdown = curDrawdown
-		currentDrawdownDays = (hpr.DateTime - highEquityDate).days
+		currentDrawdownDays = (hpr.Date - highEquityDate).days
 		if currentDrawdownDays > longestDrawdown:
 			longestDrawdown = currentDrawdownDays
 
@@ -104,7 +104,7 @@ def printReport(r: HprStatistcs):
 
 def printHprs(hprs: list[DateSum]):
 	for item in hprs:
-		print(f"{item.DateTime.strftime(settings.displayDateLayout)} {hprDisplay(item.Sum):.1f}%")
+		print(f"{item.Date.strftime(settings.displayDateLayout)} {hprDisplay(item.Sum):.1f}%")
 
 def printDrawdownInfo(data: DrawdownInfo):
 	print(f"Максимальная просадка {hprDisplay(data.MaxDrawdown):.1f}%")

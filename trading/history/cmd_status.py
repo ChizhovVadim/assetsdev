@@ -31,7 +31,8 @@ def viewStatus(
             continue
         if len(advices) == 0 or advices[-1].Position != advice.Position:
             advices.append(advice)
-    print(advices[-10:])
+    for advice in advices[-10:]:        
+        print(advice)
 
 if __name__ == "__main__":
     statusHandler()

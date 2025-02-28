@@ -22,6 +22,7 @@ class DividendItem:
 def buildDividendReport(securityInfo: dict[str,security.SecurityInfo],
                         myTrades: list[domaintypes.MyTrade],
                         myDividends: list[security.DividendSchedule],
+                        reportAccount: str,
                         year: int):
     if year is None:
         year = datetime.datetime.today().year
@@ -37,6 +38,8 @@ def buildDividendReport(securityInfo: dict[str,security.SecurityInfo],
         title = securityInfo.get(d.SecurityCode).Title
         
         for account, volume in shares.items():
+            if (reportAccount is not None) and account != reportAccount:
+                continue
             if volume==0: continue
             expected = _calculateExpectedDividend(d.Rate, volume, d.FixDate)
             paymentDate, payment = _findPayment(d.Received, account)
@@ -68,7 +71,7 @@ def buildDividendReport(securityInfo: dict[str,security.SecurityInfo],
 def _format_zero(val,fmt):
     return format(val, fmt) if val else ""
 
-def _calculateShares(myTrades, date, securityCode):
+def _calculateShares(myTrades, date, securityCode)->dict[str,int]:
     shares = {}
     for t in myTrades:
         if not(t.SecurityCode == securityCode and
@@ -99,13 +102,14 @@ def _findPayment(items, account):
 
 def dividendHandler():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--account', type=str)
     parser.add_argument('--year', type=int, default=datetime.date.today().year)
     args = parser.parse_args()
 
     securityInfo = security.loadSecurityInfo(settings.securityInfoPath)
     myTrades = loadMyTrades(settings.myTradesPath)
     myDividends = security.loadMyDividends(settings.myDividendsPath)
-    buildDividendReport(securityInfo, myTrades, myDividends, args.year)
+    buildDividendReport(securityInfo, myTrades, myDividends, args.account, args.year)
 
 if __name__ == "__main__":
     dividendHandler()

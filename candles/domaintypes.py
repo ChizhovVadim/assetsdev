@@ -5,11 +5,11 @@ import enum
 class Candle(NamedTuple):
     SecurityCode: str
     DateTime: datetime.datetime
-    O: float
-    H: float
-    L: float
-    C: float
-    V: float
+    OpenPrice: float
+    HighPrice: float
+    LowPrice: float
+    ClosePrice: float
+    Volume: float
 
 class CandleInterval(enum.StrEnum):
     MINUTES5 = "minutes5"

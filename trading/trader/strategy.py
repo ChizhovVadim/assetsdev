@@ -1,41 +1,23 @@
 import logging
 import datetime
-import queue
 
-import candles
 from trading.advisors import Advice
 from .import domaintypes
 
-class Advisor:
-      def __init__(self,
-            advisor,
-            security: domaintypes.SecurityInfo,
-            start: datetime.datetime,
-            queue: queue.Queue,
-            ):
-            self._advisor = advisor
-            self._security = security
-            self._start = start
-            self._queue = queue
-
-      def initCandles(self, candles):
-            initAdvice = None
-            for candle in candles:
-                  advice = self._advisor(candle)
-                  if advice is not None:
-                        initAdvice = advice
-            logging.info(f"Init advice {initAdvice}")
-
-      def onNewCandle(self, candle: candles.Candle):
-            if self._security.Code != candle.SecurityCode:
-                  return
-            
-            advice = self._advisor(candle)
-            if advice is None or advice.DateTime <= self._start:
-                  return
-            
-            self._queue.put(advice)
-
+def initStrategy(
+      trader,
+      portfolio: domaintypes.PortfolioInfo,
+      security: domaintypes.SecurityInfo,
+      amount: float,
+      config: domaintypes.StrategyConfig,
+):
+      initPosition = trader.getPosition(portfolio, security)
+      logging.info(f"Init position {security.Name} {initPosition}")
+      
+      return Strategy(trader, portfolio, security, amount,
+                      config.Lever*config.Weight,
+                      config.MaxLever*config.Weight,
+                      initPosition)
 
 class Strategy:
       def __init__(self,
@@ -45,6 +27,7 @@ class Strategy:
             amount: float,
             lever: float,
             maxLever: float,
+            initPosition: int,
             ):
             
             self._trader = trader
@@ -53,17 +36,14 @@ class Strategy:
             self._amount = amount
             self._lever = lever
             self._maxLever = maxLever
-                        
-            initPosition = trader.getPosition(portfolio, security)
-            logging.info(f"Init position {security.Name} {initPosition}")
             self._position = initPosition
             self._basePrice = None
 
       def onNewAdvice(self, advice: Advice):
-            if self._security.Code != advice.SecurityCode:
+            # считаем, что сигнал слишком старый
+            if (self._security.Code != advice.SecurityCode or
+                  datetime.datetime.now() - advice.DateTime >= datetime.timedelta(minutes=9)):
                   return
-            
-            logging.debug(f"Advice changed {advice}")
 
             if self._basePrice is None:
                 self._basePrice = advice.Price
@@ -75,9 +55,15 @@ class Strategy:
             volume = int(position - self._position)
             if volume == 0:
                   return
+            
+            logging.info(f"New advice {advice}")
+
+            if not self.checkPosition():
+                  return
 
             price = priceWithSlippage(advice.Price, volume)
             logging.info(f"Register order security={self._security.Name} price={price} volume={volume}")
+            # TODO try/except
             self._trader.registerOrder(domaintypes.Order(
                   Portfolio=self._portfolio,
                   Security=self._security,
@@ -85,6 +71,15 @@ class Strategy:
                   Price=price,
             ))
             self._position += volume # считаем, что заявка исполнилась
+
+      def checkPosition(self)-> bool:
+            traderPos = int(self._trader.getPosition(self._portfolio, self._security))
+            if self._position == traderPos:
+                  logging.info(f"Check position {traderPos} +")
+                  return True
+            else:
+                  logging.warning(f"Check position {self._position} {traderPos} !")
+                  return False
 
 
 def priceWithSlippage(price: float, volume: int)-> float:

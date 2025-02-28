@@ -11,8 +11,8 @@ def checkPriceChange(securityCode: str,
                      securityInfo: dict[str, security.SecurityInfo]):
     "Кидает ValueError, если большая разница цен x и y. Учитывает информацию о сплите акций."
         
-    closeChange = abs(math.log(x.C / y.C))
-    openChange = abs(math.log(x.C / y.O))
+    closeChange = abs(math.log(x.ClosePrice / y.ClosePrice))
+    openChange = abs(math.log(x.ClosePrice / y.OpenPrice))
 
     if not(openChange >= width and closeChange >= width):
         return

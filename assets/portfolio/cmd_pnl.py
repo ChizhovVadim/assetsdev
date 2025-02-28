@@ -70,9 +70,9 @@ def buildPnLReport(securityInfo: dict[str,security.SecurityInfo],
     amountFinish = 0.0
     for secCode, item in balanceItems.items():
         if item.VolumeStart != 0:
-            amountStart += item.VolumeStart*candleStorage.candleByDate(secCode, startDate).C
+            amountStart += item.VolumeStart*candleStorage.candleByDate(secCode, startDate).ClosePrice
         if item.VolumeFinish != 0:
-            amountFinish += item.VolumeFinish*candleStorage.candleByDate(secCode, finishDate).C
+            amountFinish += item.VolumeFinish*candleStorage.candleByDate(secCode, finishDate).ClosePrice
     
     ## Проверки на 0 нужны?
     if amountStart:
@@ -102,12 +102,14 @@ def buildPnLReport(securityInfo: dict[str,security.SecurityInfo],
     print(f"Бенчмарк {(benchmarkAnnualRate-1)*100:.1f}% годовых")
     print()
 
-def calcBenchmark(candleStorage, startDate, finishDate):
+def calcBenchmark(candleStorage: candles.CandleStorage, 
+                  startDate: datetime.datetime, 
+                  finishDate: datetime.datetime):
     benchmarkTicker = settings.benchmarkSecCode
     benchmarkOpen = candleStorage.candleByDate(benchmarkTicker, startDate)
     benchmarkClose = candleStorage.candleByDate(benchmarkTicker, finishDate)
 
-    benchmarkRate = benchmarkClose.C / benchmarkOpen.C
+    benchmarkRate = benchmarkClose.ClosePrice / benchmarkOpen.ClosePrice
     benchmarkAnnualRate = pow(benchmarkRate, 1.0/xirr.yearsBetween(startDate, finishDate))
     return benchmarkRate, benchmarkAnnualRate
 

@@ -2,5 +2,6 @@ import datetime
 from typing import NamedTuple
 
 class DateSum(NamedTuple):
-	DateTime: datetime.datetime
+	"Доходность торговой системы за один день"
+	Date: datetime.date
 	Sum: float

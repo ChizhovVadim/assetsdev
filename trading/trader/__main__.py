@@ -6,12 +6,12 @@ import queue
 
 import candles
 from trading import settings
-from trading.advisors import testAdvisor
 
 from .mocktrader import MockTrader
 from .quiktrader import QuikTrader
 from .storage import loadSettings
-from .strategy import Advisor, Strategy
+from .advisor import initAdvisor
+from .strategy import initStrategy
 from .import forts
 from .import domaintypes
 
@@ -64,41 +64,26 @@ def trade(canldeStorage: candles.CandleStorage,
             if availableAmount == 0:
                   logging.warning("availableAmount zero")
 
-            q = queue.Queue()
+            adviceQueue = queue.Queue()
 
             advisors = []
             strategies = []
             for config in strategyConfigs:
                   security=forts.getSecurityInfo(config.SecurityCode)
 
-                  advisor = Advisor(
-                        advisor=testAdvisor(config.Name),
-                        security=security,
-                        start=start,
-                        queue=q,
-                  )
-                  advisor.initCandles(canldeStorage.read(config.SecurityCode))
-                  new_bars = trader.getLastCandles(security, settings.defaultCandleInterval)
-                  if not new_bars:
-                        logging.warning("Quik candles empty")
-                  else:
-                        logging.info(f"Quik candles {len(new_bars)} {new_bars[0]} {new_bars[-1]}")
-                        advisor.initCandles(new_bars)
+                  advisor = initAdvisor(config, security, canldeStorage, settings.defaultCandleInterval, trader)
                   advisors.append(advisor)
 
-                  strategy = Strategy(
-                        trader=trader,
-                        portfolio=portfolio,
-                        security=security,
-                        amount=availableAmount,
-                        lever=config.Lever*config.Weight,
-                        maxLever=config.MaxLever*config.Weight,
-                  )
+                  strategy = initStrategy(trader, portfolio, security, availableAmount, config)
                   strategies.append(strategy)
 
             def onNewCandle(candle: candles.Candle):
                   for advisor in advisors:
-                        advisor.onNewCandle(candle)
+                        advice = advisor(candle)
+                        if advice is not None and advice.DateTime >= start:
+                              logging.debug(f"Advice changed {advice}")
+                              if adviceQueue is not None:
+                                    adviceQueue.put(advice)
 
             trader.setNewCandleCallback(onNewCandle)
             for strategy in strategies:
@@ -107,7 +92,7 @@ def trade(canldeStorage: candles.CandleStorage,
                   trader.subscribeCandles(strategy._security, settings.defaultCandleInterval)
 
             while True:
-                  advice = q.get()
+                  advice = adviceQueue.get()
                   for strategy in strategies:
                         strategy.onNewAdvice(advice)
             #quik.UnsubscribeFromCandles

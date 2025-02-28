@@ -1,2 +1,2 @@
-from .domaintypes import Advice
+from .domaintypes import Advice, Advisor
 from .sample import testAdvisor

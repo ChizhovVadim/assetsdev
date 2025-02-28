@@ -5,7 +5,7 @@ import functools
 from .datesum import DateSum
 
 def applyLever(hprs: list[DateSum], lever: float)->list[DateSum]:
-	return [DateSum(hpr.DateTime, 1+lever*(hpr.Sum-1)) for hpr in hprs]
+	return [DateSum(hpr.Date, 1+lever*(hpr.Sum-1)) for hpr in hprs]
 
 def limitStdev(stdev: float):
     def f(hprs: list[DateSum])-> bool:
